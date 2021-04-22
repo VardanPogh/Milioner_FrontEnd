@@ -53,55 +53,58 @@ export default function Dashboard() {
         ]
     });
 
-    const checkAnswer = (id) => {
-        let selectedQuestion = question.answers.find(obj => {
-            return obj.id === id
-        });
-        let session_id = sessionStorage.getItem('session_id');
-        if (selectedQuestion.is_true === 1) {
-            let newPoint = question.points;
-            setTrueAnswer(id);
-            getQuestion(session_id, newPoint);
-        } else {
-            setWrongAnswer(id);
-            setTrueAnswer(question.answers.find(obj => {
-                return obj.is_true === 1;
-            }).id);
-            setTimeout(function () {
-                getQuestion(session_id, 0);
-            }, 1000);
-        }
-    };
-
-    const getQuestion = (session_id, point) => {
-        var requestOptions = {
+    const checkAnswer = (answer_id) => {
+        const session_id = sessionStorage.getItem('session_id');
+        const requestOptions = {
             method: 'GET',
             redirect: 'follow'
         };
 
-        fetch(API_URL + "question/" + session_id + "/" + point, requestOptions)
+        fetch(API_URL + "check_answer/" + session_id + '/' + question.id + '/' + answer_id, requestOptions)
             .then(response => response.text())
             .then(result => {
-                let res = JSON.parse(result);
+                const res = JSON.parse(result);
+                if (res.is_true === 1) {  //true answer
+                    setTrueAnswer(answer_id);
+                } else {                //wrong anser
+                    setWrongAnswer(answer_id);
+                    setTrueAnswer(res.right_answer_id);
+                }
                 if (res.points) {
                     setPoints(res.points)
                 } else {
-                    setQuestion(res.question);
-                    sessionStorage.setItem('session_id', res.id)
+                    setTimeout(function () {
+                        setQuestion(res.newQuestion)
+                    }, 3000);
                 }
+            })
+            .catch(error => console.log('error', error));
+    };
+
+    const getFirstQuestion = () => {
+        const requestOptions = {
+            method: 'GET',
+            redirect: 'follow'
+        };
+
+        fetch(API_URL + "get_first_question", requestOptions)
+            .then(response => response.text())
+            .then(result => {
+                const res = JSON.parse(result);
+                setQuestion(res.question);
+                sessionStorage.setItem('session_id', res.id);
             })
             .catch(error => console.log('error', error));
     };
 
     useEffect(() => {
         sessionStorage.removeItem('session_id');
-        getQuestion(0, 0);
+        getFirstQuestion();
     }, []);
 
     window.onbeforeunload = function () {
         return "Game will be restart!";
     };
-
 
     return (
         <>
